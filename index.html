@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Icon Gallery</title>
+  <style>
+    :root{
+      --bg:#0b0b0c; --card:#121316; --text:#e9e9ea; --muted:#9aa0a6; --accent:#7bd8ff;
+      --gap:12px; --size-min:160px; /* minimum tile size */
+    }
+    html,body{height:100%}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial; background:var(--bg); color:var(--text)}
+    header{position:sticky; top:0; z-index:10; backdrop-filter:saturate(120%) blur(8px); background:linear-gradient(180deg, rgba(18,19,22,.95), rgba(18,19,22,.75)); border-bottom:1px solid rgba(255,255,255,.05)}
+    .bar{display:flex; gap:10px; align-items:center; padding:12px 16px; max-width:1200px; margin:0 auto}
+    .bar h1{font-size:16px; font-weight:600; margin:0}
+    .bar .spacer{flex:1}
+    input[type="search"]{flex:1; min-width:240px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.08); background:#0f1115; color:var(--text)}
+    .toggle{display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--muted)}
+    .toggle input{width:18px; height:18px}
+
+    main{margin:0 auto; padding:16px}
+
+    /* Responsive square grid */
+    .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--size-min), 1fr)); gap:var(--gap)}
+    figure.tile{margin:0; background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:14px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.25)}
+    .square{position:relative; width:100%; aspect-ratio:1/1; overflow:hidden}
+    .img-wrap{position:absolute; inset:0}
+    .img-wrap img, .img-wrap canvas{width:100%; height:100%; object-fit:cover; display:block; user-select:none; -webkit-user-drag:none}
+
+    /* anti-save deterrents (not foolproof) */
+    .shield{position:absolute; inset:0; pointer-events:auto; background:transparent}
+    .nosave .img-wrap img{pointer-events:none}
+
+    figcaption{padding:10px 12px; font-size:13px; color:var(--muted); display:flex; justify-content:space-between; align-items:center; gap:10px}
+    .cap-text{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .badge{font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.1); color:var(--accent)}
+
+    footer{max-width:1200px; margin:24px auto 48px; padding:0 16px; color:var(--muted); font-size:12px}
+    .hidden{display:none}
+    .empty{opacity:.7; text-align:center; padding:48px 12px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <h1>Icon Gallery</h1>
+      <input id="search" type="search" placeholder="Search titles… (instant)" />
+      <div class="spacer"></div>
+      <span class="toggle" title="Current items loaded"><span id="count">0</span> items</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty hidden">No matches. Try a different search.</div>
+  </main>
+
+  <footer>
+    <p><strong>Copyright notice:</strong> 2021 - 2025 Studio Bear. All rights reserved</p>
+  </footer>
+
+  <script>
+// ---------- CONFIG ----------
+const PAGE_SIZE = 120; // render in chunks for performance
+const WATERMARK_TEXT   = '© Bear'; // <-- change to your text
+const WATERMARK_OPACITY= 0; // 0..1
+const WATERMARK_FONT   = '600 18px Inter, system-ui, Arial';
+
+// Try to fetch images.json. If it doesn't exist, fall back to a small demo set.
+async function loadManifest(){
+  try{
+    const res = await fetch('images.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('no manifest');
+    const arr = await res.json();
+    if(!Array.isArray(arr)) throw new Error('manifest must be an array');
+    return arr.map((x,i)=>({src:String(x.src||x.url||''), title:String(x.title||x.name||`Item ${i+1}`)})).filter(x=>x.src);
+  }catch(e){
+    console.warn('images.json not found; using demo items');
+    return [
+      {src:'https://picsum.photos/seed/1/800/800', title:'Demo 1'},
+      {src:'https://picsum.photos/seed/2/800/800', title:'Demo 2'},
+      {src:'https://picsum.photos/seed/3/800/800', title:'Demo 3'}
+    ];
+  }
+}
+
+// State
+let ALL = [];      // full manifest
+let VIEW = [];     // filtered view
+let page = 0;      // pagination index
+
+const grid  = document.getElementById('grid');
+const empty = document.getElementById('empty');
+const search= document.getElementById('search');
+const count = document.getElementById('count');
+
+// Basic right-click / key save deterrents (not secure)
+function applyNoSave(enabled){
+  document.body.classList.toggle('nosave', enabled);
+  const blockCtx = e=> e.preventDefault();
+  const blockDefault = e=> e.preventDefault();
+  const blockKeys = e=>{
+    if((e.ctrlKey||e.metaKey) && ['s','p','c'].includes(e.key.toLowerCase())) e.preventDefault();
+  };
+  if(enabled){
+    document.addEventListener('contextmenu', blockCtx, true);
+    document.addEventListener('dragstart', blockDefault, true);
+    document.addEventListener('keydown', blockKeys, true);
+  }else{
+    document.removeEventListener('contextmenu', blockCtx, true);
+    document.removeEventListener('dragstart', blockDefault, true);
+    document.removeEventListener('keydown', blockKeys, true);
+  }
+}
+
+// Watermark drawing overlay
+function drawWatermark(canvas){
+  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.round(rect.width * dpr));
+  const h = Math.max(1, Math.round(rect.height * dpr));
+  canvas.width = w; canvas.height = h;
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+  ctx.globalAlpha = WATERMARK_OPACITY;
+  ctx.font = WATERMARK_FONT.replace(/(\d+)px/, (_,px)=> `${Math.round(px*dpr)}px`);
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+
+  // rotate canvas for diagonal watermark
+  const angle = -Math.PI/4; // -45°
+  ctx.translate(w/2, h/2);
+  ctx.rotate(angle);
+  ctx.translate(-w/2, -h/2);
+
+  // tile text across canvas
+  const metrics = ctx.measureText(WATERMARK_TEXT);
+  const stepX = (metrics.width + 200*dpr);
+  const stepY = 120*dpr;
+  for(let y = -stepY; y < h + stepY; y += stepY){
+    let offset = (y/stepY)%2 ? stepX/2 : 0; // stagger rows
+    for(let x = -stepX; x < w + stepX; x += stepX){
+      ctx.fillText(WATERMARK_TEXT, x + offset, y);
+    }
+  }
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.globalAlpha = 1;
+}
+
+// Lazy render: create tiles only as needed
+const io = new IntersectionObserver((entries)=>{
+  for(const ent of entries){
+    if(ent.isIntersecting){
+      const imgEl = ent.target.querySelector('img');
+      if(imgEl && imgEl.dataset.src){
+        imgEl.src = imgEl.dataset.src;
+        imgEl.removeAttribute('data-src');
+      }
+      io.unobserve(ent.target);
+    }
+  }
+}, {rootMargin:'400px'});
+
+function tileHTML(item){
+  const fig = document.createElement('figure');
+  fig.className = 'tile';
+  fig.innerHTML = `
+    <div class="square">
+      <div class="img-wrap">
+        <img loading="lazy" alt="${escapeHtml(item.title)}" data-src="${escapeHtml(item.src)}" referrerpolicy="no-referrer" />
+        <canvas class="wm-canvas"></canvas>
+        <div class="shield" aria-hidden="true"></div>
+      </div>
+    </div>
+    <figcaption>
+      <span class="cap-text" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</span>
+    </figcaption>`;
+  io.observe(fig);
+  // draw watermark overlay
+  const wm = fig.querySelector('.wm-canvas');
+  if(wm) drawWatermark(wm);
+  return fig;
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+function clearGrid(){
+  grid.innerHTML = '';
+  page = 0;
+}
+
+function renderNextPage(){
+  const start = page*PAGE_SIZE;
+  const end = Math.min(start + PAGE_SIZE, VIEW.length);
+  for(let i=start; i<end; i++) grid.appendChild(tileHTML(VIEW[i]));
+  page++;
+  if(end >= VIEW.length) window.removeEventListener('scroll', onScrollNearBottom);
+  else window.addEventListener('scroll', onScrollNearBottom, {passive:true});
+}
+
+function onScrollNearBottom(){
+  const near = (window.innerHeight + window.scrollY) > (document.body.offsetHeight - 800);
+  if(near) renderNextPage();
+}
+
+function applyFilter(){
+  const q = search.value.trim().toLowerCase();
+  VIEW = q ? ALL.filter(x => x.title.toLowerCase().includes(q)) : ALL.slice();
+  count.textContent = VIEW.length;
+  empty.classList.toggle('hidden', VIEW.length !== 0);
+  clearGrid();
+  renderNextPage();
+}
+
+// Init
+(async function(){
+  // Force anti-save mode ON
+  applyNoSave(true);
+
+  ALL = await loadManifest();
+  count.textContent = ALL.length;
+  VIEW = ALL.slice();
+  applyFilter();
+
+  // Redraw watermark on resize for crispness
+  window.addEventListener('resize', () => {
+    document.querySelectorAll('.wm-canvas').forEach(drawWatermark);
+  });
+})();
+
+search.addEventListener('input', applyFilter);
+</script>
+</body>
+</html>
