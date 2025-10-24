@@ -1476,6 +1476,10 @@
     "title": "Ied"
   },
   {
+    "src": "images/invoice-binder.webp",
+    "title": "Invoice Binder"
+  },
+  {
     "src": "images/jam-berry.webp",
     "title": "Jam Berry"
   },
@@ -1542,6 +1546,10 @@
   {
     "src": "images/lemon-juice-ps.webp",
     "title": "Lemon Juice Ps"
+  },
+  {
+    "src": "images/license-plate-cover.webp",
+    "title": "License Plate Cover"
   },
   {
     "src": "images/lighter.webp",
