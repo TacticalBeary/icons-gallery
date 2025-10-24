@@ -1204,38 +1204,6 @@
     "title": "FRAME VINTAGEPISTOL"
   },
   {
-    "src": "images/frozen-hotdog-beef.webp",
-    "title": "Frozen Hotdog Beef"
-  },
-  {
-    "src": "images/frozen-hotdog-pork.webp",
-    "title": "Frozen Hotdog Pork"
-  },
-  {
-    "src": "images/frozen-hotdog-vegan.webp",
-    "title": "Frozen Hotdog Vegan"
-  },
-  {
-    "src": "images/frozen-nuggets.webp",
-    "title": "Frozen Nuggets"
-  },
-  {
-    "src": "images/frozenpatties_beef.webp",
-    "title": "Frozenpatties Beef"
-  },
-  {
-    "src": "images/frozenpatties_chicken.webp",
-    "title": "Frozenpatties Chicken"
-  },
-  {
-    "src": "images/frozenpatties_fish.webp",
-    "title": "Frozenpatties Fish"
-  },
-  {
-    "src": "images/frozenpatties_vegan.webp",
-    "title": "Frozenpatties Vegan"
-  },
-  {
     "src": "images/gadget-pistol.webp",
     "title": "Gadget Pistol"
   },
@@ -1336,22 +1304,6 @@
     "title": "Gsr Kit Used1"
   },
   {
-    "src": "images/gsr-kit-used2.webp",
-    "title": "Gsr Kit Used2"
-  },
-  {
-    "src": "images/gsr-kit-used3.webp",
-    "title": "Gsr Kit Used3"
-  },
-  {
-    "src": "images/gsr-kit-used4.webp",
-    "title": "Gsr Kit Used4"
-  },
-  {
-    "src": "images/gsr-kit-used5.webp",
-    "title": "Gsr Kit Used5"
-  },
-  {
     "src": "images/gsr-kit.webp",
     "title": "Gsr Kit"
   },
@@ -1428,28 +1380,12 @@
     "title": "Heavy Sniper Receiver"
   },
   {
-    "src": "images/heist_banana.webp",
-    "title": "Heist Banana"
-  },
-  {
-    "src": "images/heist_cutter.webp",
-    "title": "Heist Cutter"
-  },
-  {
     "src": "images/heist_diamond_green.webp",
     "title": "Heist Diamond Green"
   },
   {
     "src": "images/heist_diamond_red.webp",
     "title": "Heist Diamond Red"
-  },
-  {
-    "src": "images/heist_necklace.webp",
-    "title": "Heist Necklace"
-  },
-  {
-    "src": "images/heist_panther.webp",
-    "title": "Heist Panther"
   },
   {
     "src": "images/heist_pliers.webp",
