@@ -1,0 +1,31 @@
+name: Build images.json
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "images/**"
+      - "build-images-json.mjs"
+      - ".github/workflows/build-images-json.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to commit back
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate images.json
+        run: node build-images-json.mjs
+
+      - name: Commit updated images.json
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "images.json"
+          message: "chore: auto-build images.json [skip ci]"
